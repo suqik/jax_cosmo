@@ -150,8 +150,8 @@ class WeakLensing(container):
     def __init__(
         self,
         redshift_bins,
-        ia_bias=None,
         multiplicative_bias=0.0,
+        ia_bias=None,
         sigma_e=0.26,
         **kwargs
     ):
