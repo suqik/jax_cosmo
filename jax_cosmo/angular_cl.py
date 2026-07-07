@@ -46,8 +46,11 @@ def _get_cov_blocks_ordering(probes):
     return cov_blocks
 
 
+# def angular_cl(
+#     cosmo, ell, probes, transfer_fn=tklib.Eisenstein_Hu, nonlinear_fn=power.halofit
+# ):
 def angular_cl(
-    cosmo, ell, probes, transfer_fn=tklib.Eisenstein_Hu, nonlinear_fn=power.halofit
+    cosmo, ell, probes, nonlin_pk_fun=power.nonlinear_matter_power_csstemu
 ):
     """
     Computes angular Cls for the provided probes
@@ -73,7 +76,9 @@ def angular_cl(
             k = (ell + 0.5) / np.clip(chi, 1.0)
 
             # pk should have shape [na]
-            pk = power.nonlinear_matter_power(cosmo, k, a, transfer_fn, nonlinear_fn)
+            # pk = power.nonlinear_matter_power(cosmo, k, a, transfer_fn, nonlinear_fn)
+            pk = nonlin_pk_fun(cosmo, k, a)
+            pk = np.diagonal(pk)
 
             # Compute the kernels for all probes
             kernels = np.vstack([p.kernel(cosmo, a2z(a), ell) for p in probes])
@@ -163,12 +168,20 @@ def gaussian_cl_covariance(ell, probes, cl_signal, cl_noise, f_sky=0.25, sparse=
     return cov_mat
 
 
+# def gaussian_cl_covariance_and_mean(
+#     cosmo,
+#     ell,
+#     probes,
+#     transfer_fn=tklib.Eisenstein_Hu,
+#     nonlinear_fn=power.halofit,
+#     f_sky=0.25,
+#     sparse=False,
+# ):
 def gaussian_cl_covariance_and_mean(
     cosmo,
     ell,
     probes,
-    transfer_fn=tklib.Eisenstein_Hu,
-    nonlinear_fn=power.halofit,
+    nonlin_pk_fn = power.nonlinear_matter_power_csstemu,
     f_sky=0.25,
     sparse=False,
 ):
@@ -186,7 +199,7 @@ def gaussian_cl_covariance_and_mean(
 
     # Compute signal vectors
     cl_signal = angular_cl(
-        cosmo, ell, probes, transfer_fn=transfer_fn, nonlinear_fn=nonlinear_fn
+        cosmo, ell, probes, nonlin_pk_fn = nonlin_pk_fn
     )
     cl_noise = noise_cl(ell, probes)
 

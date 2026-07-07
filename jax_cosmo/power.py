@@ -8,6 +8,11 @@ import jax_cosmo.transfer as tklib
 from jax_cosmo.scipy.integrate import romb, simps
 from jax_cosmo.scipy.interpolate import interp
 
+from CEmulator.jax.jax_emulator import JAXEmulator
+print("Loading JAX emulator...")
+emu = JAXEmulator(verbose=False)
+print("Done.\n")
+
 __all__ = ["primordial_matter_power", "linear_matter_power", "nonlinear_matter_power"]
 
 
@@ -270,3 +275,81 @@ def nonlinear_matter_power(
     This function is just a wrapper over several nonlinear power spectra.
     """
     return nonlinear_fn(cosmo, k, a, transfer_fn=transfer_fn)
+
+def linear_matter_power_EH(cosmo, k, a=1.0):
+    """
+    Linear matter power spectrum with E-H transfer function.
+    """
+    return linear_matter_power(cosmo, k, a, transfer_fn=tklib.Eisenstein_Hu)
+
+def nonlinear_matter_power_EH_halofit(cosmo, k, a=1.0):
+    """
+    Non-linear matter power spectrum with E-H transfer function and halofit correction.
+    """
+    return nonlinear_matter_power(cosmo, k, a, transfer_fn=tklib.Eisenstein_Hu, nonlinear_fn=halofit)
+
+def linear_matter_power_csstemu(cosmo, k, a=1.0):
+    """
+    Linear matter power spectrum predicted by CSSTEmulator.
+    """
+    cosmo_csst = np.array([
+        cosmo.Omega_b,
+        cosmo.Omega_m,
+        cosmo.h*100.,
+        cosmo.n_s,
+        2.105, ## fid A_s
+        cosmo.w0,
+        cosmo.wa,
+        0.0
+    ])
+
+    sigma8_sq_fid = emu.get_sigmasq(cosmo_csst, R=8.0, z=0.0)
+    A_s_true = cosmo.sigma8 ** 2 / sigma8_sq_fid * 2.105
+
+    cosmo_csst = np.array([
+        cosmo.Omega_b,
+        cosmo.Omega_m,
+        cosmo.h*100.,
+        cosmo.n_s,
+        A_s_true, ## true A_s
+        cosmo.w0,
+        cosmo.wa,
+        0.0
+    ])
+
+    p_mm = emu.get_pklin(cosmo_csst, z=1./a - 1, k=k, Pcb=False)
+    
+    return p_mm
+
+def nonlinear_matter_power_csstemu(cosmo, k, a=1.0):
+    """
+    Non-linear matter power spectrum predicted by CSSTEmulator.
+    """
+    cosmo_csst = np.array([
+        cosmo.Omega_b,
+        cosmo.Omega_m,
+        cosmo.h*100.,
+        cosmo.n_s,
+        2.105, ## fid A_s
+        cosmo.w0,
+        cosmo.wa,
+        0.0 ## hard-coding m_nu as 0.0
+    ])
+
+    sigma8_sq_fid = emu.get_sigmasq(cosmo_csst, R=8.0, z=0.0)
+    A_s_true = cosmo.sigma8 ** 2 / sigma8_sq_fid * 2.105
+
+    cosmo_csst = np.array([
+        cosmo.Omega_b,
+        cosmo.Omega_m,
+        cosmo.h*100.,
+        cosmo.n_s,
+        A_s_true, ## true A_s
+        cosmo.w0,
+        cosmo.wa,
+        0.0 ## hard-coding m_nu as 0.0
+    ])
+
+    p_mm = emu.get_pknl(cosmo_csst, z=1./a - 1, k=k, Pcb=False)
+    
+    return p_mm
